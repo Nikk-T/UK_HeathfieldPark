@@ -1,0 +1,280 @@
+/*******************************************************************************************
+  SIMPL+ Module Information
+*******************************************************************************************/
+/*
+Dealer Name:
+System Name:  ClipsalProcString
+System Number:
+Programmer:	Baykov
+Comments:
+*/
+
+/*******************************************************************************************
+  Compiler Directives
+*******************************************************************************************/
+// #ENABLE_DYNAMIC
+#SYMBOL_NAME "Clipsal_FanSpeed"
+// #HINT ""
+// #DEFINE_CONSTANT
+// #CATEGORY "" 
+// #PRINT_TO_TRACE
+// #DIGITAL_EXPAND 
+// #ANALOG_SERIAL_EXPAND 
+#OUTPUT_SHIFT 6
+// #HELP_PDF_FILE ""
+#DEFAULT_VOLATILE
+#ENABLE_STACK_CHECKING
+#ENABLE_TRACE
+#ENCODING_ASCII
+// #ENCODING_UTF16
+// #ENCODING_INHERIT_FROM_PARENT
+// #ENCODING_INHERIT_FROM_PROGRAM
+
+#HELP_BEGIN
+   No help available
+#HELP_END
+
+#DEFINE_CONSTANT signalPulse 50
+/*******************************************************************************************
+  Include Libraries
+*******************************************************************************************/
+// #CRESTRON_LIBRARY ""
+// #USER_LIBRARY ""
+
+/*******************************************************************************************
+  DIGITAL, ANALOG and SERIAL INPUTS and OUTPUTS
+*******************************************************************************************/
+DIGITAL_INPUT _SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,fan_100,fan_75,fan_50,fan_25,fan_off,_SKIP_;
+// STRING_INPUT 
+BUFFER_INPUT from_clipsal[200];
+DIGITAL_OUTPUT fan_100_fb,fan_75_fb,fan_50_fb,fan_25_fb,fan_off_fb,_SKIP_;
+STRING_OUTPUT to_clipsal;
+
+/*******************************************************************************************
+  SOCKETS
+*******************************************************************************************/
+// TCP_CLIENT
+// TCP_SERVER
+// UDP_SOCKET
+
+/*******************************************************************************************
+  Parameters
+*******************************************************************************************/
+INTEGER_PARAMETER application, adr_group_100, adr_group_75, adr_group_50, adr_group_25, adr_group_off;
+
+/*******************************************************************************************
+  Parameter Properties
+*******************************************************************************************/
+#BEGIN_PARAMETER_PROPERTIES application, adr_group_100, adr_group_75, adr_group_50, adr_group_25, adr_group_off
+	propValidUnits = unitHex;
+	propDefaultUnit = unitHex;
+   // propBounds = lower_bound , upper_bound;
+   // propDefaultValue = ;  // or, propDefaultValue = "";
+   // propList = // { "value" , "label" } , { "value" , "label" } , ... ;
+   // propShortDescription = "status_bar_hint_text";
+   // #BEGIN_PROP_FULL_DESCRIPTION  line_1...  line_2...  line_n  #END_PROP_FULL_DESCRIPTION
+   // #BEGIN_PROP_NOTES line_1...  line_2...  line_n  #END_PROP_NOTES
+#END_PARAMETER_PROPERTIES
+
+
+/*******************************************************************************************
+  Structure Definitions
+*******************************************************************************************/
+
+/*******************************************************************************************
+  Global Variables
+*******************************************************************************************/
+NONVOLATILE INTEGER mFan_100, mFan_75, mFan_50, mFan_25, mFan_off;
+
+/*******************************************************************************************
+  Functions
+*******************************************************************************************/
+function InterlockStatus(integer Position)
+{
+	switch(Position)
+	{
+		case(1):
+		{
+			fan_100_fb = 1; fan_75_fb = 0; fan_50_fb = 0; fan_25_fb = 0; fan_off_fb = 0;
+			mFan_100 = 1;   mFan_75 = 0;   mFan_50 = 0;   mFan_25 = 0;   mFan_off = 0;
+		}
+		case(2):
+		{
+			fan_100_fb = 0; fan_75_fb = 1; fan_50_fb = 0; fan_25_fb = 0; fan_off_fb = 0;
+			mFan_100 = 0;   mFan_75 = 1;   mFan_50 = 0;   mFan_25 = 0;   mFan_off = 0;
+		}
+		case(3):
+		{
+			fan_100_fb = 0; fan_75_fb = 0; fan_50_fb = 1; fan_25_fb = 0; fan_off_fb = 0;
+			mFan_100 = 0;   mFan_75 = 0;   mFan_50 = 1;   mFan_25 = 0;   mFan_off = 0;
+		}
+		case(4):
+		{
+			fan_100_fb = 0; fan_75_fb = 0; fan_50_fb = 0; fan_25_fb = 1; fan_off_fb = 0;
+			mFan_100 = 0;   mFan_75 = 0;   mFan_50 = 0;   mFan_25 = 1;   mFan_off = 0;
+		}
+		case(5):
+		{
+			fan_100_fb = 0; fan_75_fb = 0; fan_50_fb = 0; fan_25_fb = 0; fan_off_fb = 1;
+			mFan_100 = 0;   mFan_75 = 0;   mFan_50 = 0;   mFan_25 = 0;   mFan_off = 1;
+		}
+	}
+}
+
+integer_Function Calc_CRC_bool(integer yy, integer adr)
+{
+	integer sum, CRC;
+	if(yy=1) sum=0x05 + application + 0x79 + adr;
+	else sum=0x05 + application + 0x01 + adr;
+//	trace("Clipsal: sum=%x, mod=%x",sum, sum mod 0x100);
+	if((sum mod 0x100)=0) CRC=0;
+	else CRC=(0x100 - (sum mod 0x100));
+	return(CRC);
+}
+
+string_Function ConvertHex(integer yy)
+{
+	string hex[2];
+	if(yy<0x10)
+   	hex="0"+IToHex(yy);
+	else
+		hex=IToHex(yy);
+	Return (hex);
+}
+
+integer Proc_Rx;
+function Parser()
+{
+	integer startPosition, endPosition;
+	string fbString[50], temp[2];
+	if(!Proc_Rx)
+	{
+		Proc_Rx=1;
+		wait(500,wait_Rx)
+		{
+			trace("Clipsal: Invalid string");
+			Proc_Rx=0;
+		 	clearbuffer(from_clipsal);
+		}
+		startPosition=find("05",from_clipsal);
+		endPosition=find(chr(0x0D),from_clipsal);
+		if(startPosition>0 && endPosition>0)
+		{
+			fbString=mid(from_clipsal,startPosition+4,endPosition-startPosition-6);
+			if(HexToI(removebylength(2,fbString))=application)
+			{
+				switch(HexToI(removebylength(2,fbString)))
+				{
+					case(0x01):	temp=removebylength(2,fbString);
+				}
+				//Analize bytes value
+				switch(HexToI(removebylength(2,fbString)))
+				{
+					case(0x79): //bool = true
+					{
+						switch(HexToI(removebylength(2,fbString)))
+						{
+							case(adr_group_100):	InterlockStatus(1);
+							case(adr_group_75):	InterlockStatus(2);
+							case(adr_group_50):	InterlockStatus(3);
+							case(adr_group_25):	InterlockStatus(4);
+							case(adr_group_off):	InterlockStatus(5);
+						}
+					}
+					case(0x01): //bool = false
+					{
+
+					}
+				}				
+			}
+		}
+		else
+		{
+			trace("Clipsal: Incorrect string");
+		}
+		Proc_Rx=0;
+		clearbuffer(from_clipsal);
+		cancelwait(wait_Rx);
+	}
+}
+
+/*******************************************************************************************
+  Event Handlers
+*******************************************************************************************/
+PUSH fan_100
+{
+	// make command to Clipsal
+	string cmd[20];
+  cmd = "\\05"+ConvertHex(application)+"0079"+ConvertHex(adr_group_100)+ConvertHex(Calc_CRC_bool(1,adr_group_100))+"\r";
+	//send command to port
+	to_Clipsal = cmd;
+	//update status
+	InterlockStatus(1);
+}
+
+PUSH fan_75
+{
+	// make command to Clipsal
+	string cmd[20];
+  cmd = "\\05"+ConvertHex(application)+"0079"+ConvertHex(adr_group_75)+ConvertHex(Calc_CRC_bool(1,adr_group_75))+"\r";
+	//send command to port
+	to_Clipsal = cmd;
+	//update status
+	InterlockStatus(2);
+}
+
+PUSH fan_50
+{
+	// make command to Clipsal
+	string cmd[20];
+  cmd = "\\05"+ConvertHex(application)+"0079"+ConvertHex(adr_group_50)+ConvertHex(Calc_CRC_bool(1,adr_group_50))+"\r";
+	//send command to port
+	to_Clipsal = cmd;
+	//update status
+	InterlockStatus(3);
+}
+
+PUSH fan_25
+{
+	// make command to Clipsal
+	string cmd[20];
+  cmd = "\\05"+ConvertHex(application)+"0079"+ConvertHex(adr_group_25)+ConvertHex(Calc_CRC_bool(1,adr_group_25))+"\r";
+	//send command to port
+	to_Clipsal = cmd;
+	//update status
+	InterlockStatus(4);
+}
+
+PUSH fan_off
+{
+	// make command to Clipsal
+	string cmd[20];
+  cmd = "\\05"+ConvertHex(application)+"0079"+ConvertHex(adr_group_off)+ConvertHex(Calc_CRC_bool(1,adr_group_off))+"\r";
+	//send command to port
+	to_Clipsal = cmd;
+	//update status
+	InterlockStatus(5);
+}
+
+CHANGE from_clipsal
+{
+	if(find(chr(0x0D),from_clipsal))
+	{
+		Parser();
+	}
+}
+
+/*******************************************************************************************
+  Main()
+*******************************************************************************************/
+Function Main()
+{
+	WaitForInitializationComplete();  
+
+	fan_100_fb = mFan_100;
+	fan_75_fb = mFan_75;
+	fan_50_fb = mFan_50;
+	fan_25_fb = mFan_25;
+	fan_off_fb = mFan_off;
+}
+

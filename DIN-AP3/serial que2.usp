@@ -1,0 +1,112 @@
+/***********************************************************************
+  SIMPL+ Module Information
+  (Fill in comments below)
+***********************************************************************/
+/*
+Dealer Name: Crestron Electronics
+System Name:
+System Number:
+Programmer: CRR
+Comments:
+*/
+
+/***********************************************************************
+  Compiler Directives
+  (Uncomment and declare compiler directives as needed)
+***********************************************************************/
+#SYMBOL_NAME "Serial String Que Ver. 2"
+#HINT "Allows multiple strings to be qued up, and sent one at a time"
+#HELP "No Help Available"
+// #DEFINE_CONSTANT
+
+/***********************************************************************
+  DIGITAL, ANALOG and SERIAL INPUTS and OUTPUTS
+  (Uncomment and declare inputs and outputs as needed)
+***********************************************************************/
+DIGITAL_INPUT Trigger, Reset;
+// DIGITAL_OUTPUT 
+// ANALOG_INPUT 
+ANALOG_OUTPUT strings_waiting;
+// STRING_INPUT 
+STRING_OUTPUT String_OUT$;
+BUFFER_INPUT String_IN$[200]; 
+
+/***********************************************************************
+  Global Variables
+  (Uncomment and declare global variables as needed)
+***********************************************************************/
+INTEGER length, storelocation, recalllocation, oktosend;
+STRING stringswaiting[200][40];
+
+/***********************************************************************
+  Functions
+  (Add any additional functions here)
+  Note:  Functions must be physically placed before the location in
+         the code that calls them.
+***********************************************************************/
+
+Function calculate()
+{
+	if(storelocation=recalllocation) strings_waiting=0;
+	if(storelocation>recalllocation) strings_waiting=(storelocation-recalllocation);
+	if(storelocation<recalllocation) strings_waiting=(storelocation+(200-recalllocation));
+}
+
+
+/***********************************************************************
+  Event Handlers
+  (Uncomment and declare additional event handlers as needed)
+***********************************************************************/
+PUSH trigger
+{
+	if(oktosend=0)
+	{
+		if(storelocation=recalllocation) oktosend=1;
+		else
+		{
+			string_out$=stringswaiting[recalllocation];
+			recalllocation=recalllocation+1;
+			if(recalllocation=201) recalllocation=1;
+			call calculate(); 
+		}
+	}
+}
+
+PUSH Reset
+	{
+	storelocation=1;
+	recalllocation=1;
+	oktosend=1;
+	clearbuffer(string_in$);
+	}
+
+CHANGE String_IN$
+{
+	if(oktosend=1)
+	{
+		string_out$=string_in$;
+		oktosend=0;
+	}
+	else
+	{
+		stringswaiting[storelocation]=string_in$;
+		storelocation=storelocation+1;
+		if(storelocation=201) storelocation=1;
+		call calculate();  
+	}
+	clearbuffer(string_in$);
+}
+
+/***********************************************************************
+  Main()
+  Place one-time startup code here
+  This code will get called when the system starts up
+***********************************************************************/
+Function Main()
+{
+	storelocation=1;
+	recalllocation=1;
+	oktosend=1;
+	clearbuffer(string_in$);
+}
+

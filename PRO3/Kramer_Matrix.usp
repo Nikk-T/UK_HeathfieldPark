@@ -1,0 +1,91 @@
+/*******************************************************************************************
+  SIMPL+ Module Information
+  (Fill in comments below)
+*******************************************************************************************/
+/*
+Dealer Name:
+System Name:
+System Number:
+Programmer: Baykov
+Comments:
+*/
+
+/*******************************************************************************************
+  Compiler Directives
+*******************************************************************************************/
+#SYMBOL_NAME "Kramer_Matrix"
+// #HINT ""
+// #DEFINE_CONSTANT
+#CATEGORY "4" // Device Interface
+// #DEFAULT_VOLATILE
+#DEFAULT_NONVOLATILE
+#ENABLE_STACK_CHECKING
+
+#HELP_BEGIN
+#HELP_END
+
+
+/*******************************************************************************************
+  Include Libraries
+*******************************************************************************************/
+// #CRESTRON_LIBRARY ""
+// #USER_LIBRARY ""
+
+/*******************************************************************************************
+  DIGITAL, ANALOG and SERIAL INPUTS and OUTPUTS
+*******************************************************************************************/
+// DIGITAL_INPUT 
+ANALOG_INPUT Source_All;
+ANALOG_INPUT Source_Room[8];
+
+STRING_OUTPUT To_Device;
+
+/*******************************************************************************************
+  Structure Definitions
+*******************************************************************************************/
+
+/*******************************************************************************************
+  Global Variables
+*******************************************************************************************/
+
+/*******************************************************************************************
+  Functions
+*******************************************************************************************/
+
+/*******************************************************************************************
+  Event Handlers
+*******************************************************************************************/
+/*CHANGE Source_All
+{
+  integer i;
+	string Out[4];
+	i = GetLastModifiedArrayIndex();
+	MakeString(Out,"%02X%02X%02X%02X", 1, 80+Source_Room[i], 80, 81);
+	To_Device = Out;
+}
+*/
+CHANGE Source_Room
+{
+//  integer i;
+//	string Out[4];
+//	i = GetLastModifiedArrayIndex();
+//	MakeString(To_Device,"%02d%02d%02d%02d", 0x1, 0x80+Source_Room[GetLastModifiedArrayIndex()], 0x80+GetLastModifiedArrayIndex(), 0x81);
+	To_Device = chr(0x1)+chr(0x80+Source_Room[GetLastModifiedArrayIndex()])+chr(0x80+GetLastModifiedArrayIndex())+chr(0x81);
+}
+
+/*******************************************************************************************
+  Main()
+*******************************************************************************************/
+Function Main()
+{
+  To_Device = "";
+    // WaitForInitializationComplete();
+    // If you are reading any Input or Output variables, uncomment
+    //   the WaitForInitializationComplete statement above and read
+    //   them afterwards.  Input/Output variables will not have
+    //   their correct values set until after the logic processor
+    //   runs and propagates the values to them.
+}
+/*******************************************************************************************
+  End.
+*******************************************************************************************/

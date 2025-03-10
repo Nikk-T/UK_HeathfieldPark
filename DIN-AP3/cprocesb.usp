@@ -1,0 +1,228 @@
+/***********************************************************************
+  SIMPL+ Module Information
+  (Fill in comments below)
+***********************************************************************/
+/*
+Dealer Name: Crestron Electronics
+System Name:
+System Number:
+Programmer: CRR
+Comments:
+*/
+
+/***********************************************************************
+  Compiler Directives
+  (Uncomment and declare compiler directives as needed)
+***********************************************************************/
+#SYMBOL_NAME "Clipsal String Processor v2"
+#HINT "Processes all commands sent to/received from a Clipsal system"
+// #DEFINE_CONSTANT
+
+#HELP_BEGIN
+This module should only be used inside the macro CLIPPRO. It will take
+any commands to be sent to the Clipsal system, and will format it as the
+Clipsal system requires. It will also take any commands received from the
+Clipsal system, reformat them the way the Crestron system requires, and
+send the processed string back into the Crestron program.
+#HELP_END
+
+
+/***********************************************************************
+  DIGITAL, ANALOG and SERIAL INPUTS and OUTPUTS
+  (Uncomment and declare inputs and outputs as needed)
+***********************************************************************/
+DIGITAL_INPUT Setup_Clipsal;
+// ANALOG_INPUT 
+STRING_INPUT From_Program$[40];
+BUFFER_INPUT From_Clipsal$[250];
+
+// DIGITAL_OUTPUT 
+// ANALOG_OUTPUT 
+STRING_OUTPUT To_Clipsal$, To_Program$;
+
+/***********************************************************************
+  Global Variables
+  (Uncomment and declare global variables as needed)
+***********************************************************************/
+INTEGER i, j, k, counter, tempchar, temp1, temp2, character, char, newlength, repeat, store_counter, recall_counter;
+STRING temp$[40], temp2$[2], tempstring$[50], newstring$[50], new$[50], tempbuf$[50], header$[5], part1$[1], part2$[1], Part3$[1];
+STRING que[31][50];
+
+/***********************************************************************
+  Functions
+  (Add any additional functions here)
+  Note:  Functions must be physically placed before the location in
+         the code that calls them.
+***********************************************************************/
+ 
+Function Process_onoff()
+	{
+	repeat = newlength / 2;
+	for(k = 1 to repeat)
+		{
+		part1$ = chr(getc(tempbuf$));
+		part2$ = chr(getc(tempbuf$));
+		makestring(to_program$, "%s%s%s0\n", header$, part1$, Part2$);
+		processlogic();
+		}
+    }  
+
+Function Process_level()
+	{
+	repeat = newlength / 3;
+	for(k = 1 to repeat)
+		{
+		part1$ = chr(getc(tempbuf$));
+		part2$ = chr(getc(tempbuf$));
+		part3$ = chr(getc(tempbuf$));
+		makestring(to_program$, "%s%s%s%s0\n", header$, part1$, Part2$, Part3$);
+		processlogic();
+		}
+    }
+
+Function Process()
+	{
+	new$ = que[recall_counter];
+	recall_counter = recall_counter + 1;
+	if(recall_counter = 30){recall_counter = 1;}
+	clearbuffer(newstring$);        
+   	counter = 1;
+   	while(counter < len(new$))
+   		{
+   		tempchar = byte(new$, counter);
+   		switch(tempchar)
+   			{
+   			case(48):{temp1 = 0;}
+   			case(49):{temp1 = 1;}
+   			case(50):{temp1 = 2;}
+   			case(51):{temp1 = 3;}
+   			case(52):{temp1 = 4;}
+   			case(53):{temp1 = 5;}
+   			case(54):{temp1 = 6;}
+   			case(55):{temp1 = 7;}
+   			case(56):{temp1 = 8;}
+   			case(57):{temp1 = 9;}
+   			case(65):{temp1 = 10;}
+   			case(66):{temp1 = 11;}
+   			case(67):{temp1 = 12;}
+   			case(68):{temp1 = 13;}
+   			case(69):{temp1 = 14;}
+   			case(70):{temp1 = 15;}
+   			default:{temp1 = 0;}
+   			}
+   		tempchar = byte(new$, counter + 1);
+   		switch(tempchar)
+   			{
+   			case(48):{temp2 = 0;}
+   			case(49):{temp2 = 1;}
+   			case(50):{temp2 = 2;}
+   			case(51):{temp2 = 3;}
+   			case(52):{temp2 = 4;}
+   			case(53):{temp2 = 5;}
+   			case(54):{temp2 = 6;}
+   			case(55):{temp2 = 7;}
+   			case(56):{temp2 = 8;}
+   			case(57):{temp2 = 9;}
+   			case(65):{temp2 = 10;}
+   			case(66):{temp2 = 11;}
+   			case(67):{temp2 = 12;}
+   			case(68):{temp2 = 13;}
+   			case(69):{temp2 = 14;}
+   			case(70):{temp2 = 15;}
+   			default:{temp2 = 0;}
+   			}
+   		character = (temp1 * 16) + temp2;
+   		newstring$ = newstring$ + chr(character);
+   		counter = counter + 2;
+   		}
+   	if(len(newstring$) < 9)
+   		{
+		MAKESTRING(to_program$, "%s\n", newstring$);
+		processlogic();
+		}
+	else
+		{
+		newlength = len(newstring$) - 5;
+		tempbuf$ = mid(newstring$, 5, newlength);
+		header$ = mid(newstring$, 1, 4);
+		if(byte(newstring$, 5) = 1) 
+			{
+			call process_onoff();
+			}
+		else if(byte(newstring$, 5) = 121)
+			{
+			call process_onoff();
+			}
+		else if(byte(newstring$, 1) = 5)
+			{
+			call process_level();
+			}
+		}
+  	}
+ 
+/***********************************************************************
+  Event Handlers
+  (Uncomment and declare additional event handlers as needed)
+***********************************************************************/
+
+PUSH Setup_Clipsal
+	{
+	Makestring(To_Clipsal$, "\n|r\n");
+	}
+	
+CHANGE From_Program$
+	{
+	clearbuffer(temp$);
+	For (I = 1 to len(From_Program$))
+    	{
+    	Makestring(Temp2$, "%02X", byte(From_Program$, i));
+    	temp$ = temp$ + Temp2$;
+    	}
+    makestring(To_Clipsal$, "\\%sr\r", Temp$);
+	}
+
+CHANGE From_Clipsal$
+	{
+	for(j = 1 to len(from_clipsal$))
+		{                           
+		char = getc(From_Clipsal$);
+		if(char > 70)
+			{
+			clearbuffer(tempstring$);
+			}
+		else if(char > 47)
+			{
+			tempstring$ = tempstring$ + chr(char);
+			}
+		else if(char = 10)
+		    { 
+			que[store_counter] = tempstring$;
+			store_counter = store_counter + 1;
+			if(store_counter = 30){store_counter = 1;}
+			clearbuffer(tempstring$);
+			}
+		}
+	}
+
+/***********************************************************************
+  Main()
+  Uncomment and place one-time startup code here
+  (This code will get called when the system starts up)
+***********************************************************************/
+
+Function Main()
+	{
+    clearbuffer(tempstring$);
+    store_counter = 1;
+    recall_counter = 1;
+    while(1)
+	   	{
+    	while(store_counter <> recall_counter)
+   			{
+    		call process();
+    		} 
+    	processlogic();
+		}
+	}
+
+
