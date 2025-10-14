@@ -1,8 +1,8 @@
 <?xml version='1.0' encoding='ISO-8859-1' ?>
 <File Type='Manifest' Version='6.1.0' ObjectDisplayList='4'>
-<Project FileName='iPad_20App.zip' Size='6603974' Build='20251007170623'>
+<Project FileName='iPad_20App.zip' Size='6605311' Build='20251011125752'>
 <Sources>
-<Source FileName='iPad_20App.xml' Size='538' Type='Application' Build='20251007170623' MinimumSGVersion='2.11.05.00' />
+<Source FileName='iPad_20App.xml' Size='538' Type='Application' Build='20251011125752' MinimumSGVersion='2.11.05.00' />
 </Sources>
 </Project>
 </File>
